@@ -22,7 +22,7 @@ const LoadingSpinner = () => {
           />
         </svg>
       </div>
-      <style>{`
+      <style>{` 
         @keyframes dash {
           72.5% {
             opacity: 0;
