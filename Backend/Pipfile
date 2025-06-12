@@ -2,8 +2,8 @@
 python_version = "3.8"
 
 [packages]
-flask = "*"
 flask-sqlalchemy = "*"
+flask = "*"
 flask-migrate = "*"
 
 [dev-packages]

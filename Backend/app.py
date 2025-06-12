@@ -1,5 +1,5 @@
-from flask import Flask
-from models import db
+from flask import Flask, request, jsonify
+from models import db, User
 from flask_migrate import Migrate
 
 
