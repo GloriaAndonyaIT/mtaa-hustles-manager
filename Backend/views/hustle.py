@@ -5,6 +5,8 @@ from models import db, Hustle
 
 hustle_bp = Blueprint('hustle', __name__)
 
+
+
 # CREATE HUSTLE
 @hustle_bp.route("/hustles", methods=["POST"])
 def create_hustle():
@@ -19,7 +21,7 @@ def create_hustle():
     if not title or not hustle_type or not description or not date_str or not user_id:
         return jsonify({"error": "Title, type, description, date, and user_id are required"}), 400
 
-    # Parse date
+   
     try:
         date = datetime.strptime(date_str, "%Y-%m-%d").date()
     except ValueError:
@@ -30,6 +32,14 @@ def create_hustle():
     db.session.commit()
 
     return jsonify({"success": "Hustle created successfully"}), 201
+
+
+
+
+
+
+
+
 
 # GET HUSTLE BY ID
 @hustle_bp.route("/hustles/<int:hustle_id>", methods=["GET"])
@@ -48,6 +58,11 @@ def get_hustle(hustle_id):
         "user_id": hustle.user_id
     }), 200
 
+
+
+
+
+
 # GET ALL HUSTLES
 @hustle_bp.route("/hustles", methods=["GET"])
 def get_all_hustles():
@@ -65,6 +80,12 @@ def get_all_hustles():
         })
 
     return jsonify(result), 200
+
+
+
+
+
+
 
 # UPDATE HUSTLE
 @hustle_bp.route("/hustles/<int:hustle_id>", methods=["PUT"])
@@ -95,6 +116,8 @@ def update_hustle(hustle_id):
     db.session.commit()
 
     return jsonify({"success": "Hustle updated successfully"}), 200
+
+
 
 # DELETE HUSTLE
 @hustle_bp.route("/hustles/<int:hustle_id>", methods=["DELETE"])

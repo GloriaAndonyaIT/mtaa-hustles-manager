@@ -38,6 +38,9 @@ def create_goal():
 
     return jsonify({"success": "Goal created successfully"}), 201
 
+
+
+
 # GET GOAL BY ID
 @goal_bp.route("/goals/<int:goal_id>", methods=["GET"])
 def get_goal(goal_id):
@@ -55,6 +58,8 @@ def get_goal(goal_id):
         "user_id": goal.user_id,
         "hustle_id": goal.hustle_id
     }), 200
+
+
 
 # GET ALL GOALS
 @goal_bp.route("/goals", methods=["GET"])
@@ -74,6 +79,10 @@ def get_all_goals():
         })
 
     return jsonify(result), 200
+
+
+
+
 
 # UPDATE GOAL
 @goal_bp.route("/goals/<int:goal_id>", methods=["PUT"])
@@ -100,6 +109,8 @@ def update_goal(goal_id):
     db.session.commit()
 
     return jsonify({"success": "Goal updated successfully"}), 200
+
+
 
 # DELETE GOAL
 @goal_bp.route("/goals/<int:goal_id>", methods=["DELETE"])

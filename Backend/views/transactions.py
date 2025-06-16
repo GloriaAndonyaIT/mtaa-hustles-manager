@@ -2,6 +2,9 @@ from flask import Flask, request, jsonify, Blueprint
 from models import db, Transaction
 transaction_bp = Blueprint('transaction', __name__)
 from datetime import datetime
+
+
+
 # CREATE TRANSACTION
 @transaction_bp.route("/transactions", methods=["POST"])
 def create_transaction():
@@ -36,6 +39,13 @@ def create_transaction():
     db.session.commit()
 
     return jsonify({"success": "Transaction created successfully"}), 201
+
+
+
+
+
+
+
 # GET TRANSACTION BY ID
 @transaction_bp.route("/transactions/<int:transaction_id>", methods=["GET"])
 def get_transaction(transaction_id):
@@ -53,6 +63,11 @@ def get_transaction(transaction_id):
 
         "user_id": transaction.user_id
     }), 200
+
+
+
+
+
 # GET ALL TRANSACTIONS
 @transaction_bp.route("/transactions", methods=["GET"])
 def get_all_transactions():
@@ -71,6 +86,10 @@ def get_all_transactions():
         })
     
     return jsonify(result), 200
+
+
+
+
 # UPDATE TRANSACTION
 @transaction_bp.route("/transactions/<int:transaction_id>", methods=["PUT"])
 def update_transaction(transaction_id):
@@ -93,6 +112,9 @@ def update_transaction(transaction_id):
     db.session.commit()
 
     return jsonify({"success": "Transaction updated successfully"}), 200
+
+
+
 # DELETE TRANSACTION
 @transaction_bp.route("/transactions/<int:transaction_id>", methods=["DELETE"])
 def delete_transaction(transaction_id):
