@@ -2,6 +2,9 @@ from flask import Flask, request, jsonify, Blueprint
 from models import db, Debt
 from datetime import datetime
 debt_bp = Blueprint('debt', __name__)
+
+
+
 # CREATE DEBT
 @debt_bp.route("/debts", methods=["POST"])
 def create_debt():
@@ -13,9 +16,9 @@ def create_debt():
     user_id = data.get("user_id")
     creditor = data.get("creditor")
     due_date_str = data.get("due_date")
-    status = data.get("status", "pending")  # default to 'pending' if not provided
+    status = data.get("status", "pending") 
 
-    # Required field check
+    
     if not amount or not description or not date_str or not user_id or not creditor or not due_date_str or not status:
         return jsonify({"error": "All fields are required: amount, description, date, user_id, creditor, due_date, status"}), 400
 
@@ -39,6 +42,9 @@ def create_debt():
     db.session.commit()
 
     return jsonify({"success": "Debt created successfully"}), 201
+
+
+
 # GET DEBT BY ID
 @debt_bp.route("/debts/<int:debt_id>", methods=["GET"])
 def get_debt(debt_id):
@@ -54,6 +60,11 @@ def get_debt(debt_id):
         "date": debt.date.isoformat(),
         "user_id": debt.user_id
     }), 200
+
+
+
+
+
 # GET ALL DEBTS
 @debt_bp.route("/debts", methods=["GET"])
 def get_all_debts():
@@ -69,6 +80,12 @@ def get_all_debts():
             "user_id": debt.user_id
         })
     return jsonify(result), 200
+
+
+
+
+
+
 # UPDATE DEBT
 @debt_bp.route("/debts/<int:debt_id>", methods=["PUT"])
 def update_debt(debt_id):
@@ -78,11 +95,11 @@ def update_debt(debt_id):
     if not debt:
         return jsonify({"error": "Debt not found"}), 404
 
-    # Update fields safely
+  
     debt.amount = data.get("amount", debt.amount)
     debt.description = data.get("description", debt.description)
 
-    # Convert string to Python date if 'date' is in data
+  
     if "date" in data:
         try:
             debt.date = datetime.strptime(data["date"], "%Y-%m-%d").date()
@@ -93,7 +110,7 @@ def update_debt(debt_id):
 
     return jsonify({"success": "Debt updated successfully"}), 200
     
-    return jsonify({"success": "Debt updated successfully"}), 200
+  
 # DELETE DEBT
 @debt_bp.route("/debts/<int:debt_id>", methods=["DELETE"])
 def delete_debt(debt_id):

@@ -56,7 +56,7 @@ def to_dict_with_relations(self):
         'goals_count': len(self.goals)
     }
 
-#HUSTLE
+
 class Hustle(db.Model):
     __tablename__ = 'hustles'
     
