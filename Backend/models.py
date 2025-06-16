@@ -26,6 +26,37 @@ class User(db.Model):
     goals = db.relationship('Goal', backref='user', lazy=True)
 
 
+
+def __repr__(self):
+    return f'<User {self.username}>'
+
+def to_dict(self):
+    """Convert user to dictionary (excluding password)"""
+    return {
+        'id': self.id,
+        'username': self.username,
+        'email': self.email,
+        'is_admin': self.is_admin,
+        'created_at': self.created_at.isoformat() if self.created_at else None,
+        'updated_at': self.updated_at.isoformat() if self.updated_at else None
+    }
+
+def to_dict_with_relations(self):
+    """Convert user to dictionary including related data"""
+    return {
+        'id': self.id,
+        'username': self.username,
+        'email': self.email,
+        'is_admin': self.is_admin,
+        'created_at': self.created_at.isoformat() if self.created_at else None,
+        'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        'hustles_count': len(self.hustles),
+        'transactions_count': len(self.transactions),
+        'debts_count': len(self.debts),
+        'goals_count': len(self.goals)
+    }
+
+#HUSTLE
 class Hustle(db.Model):
     __tablename__ = 'hustles'
     
@@ -33,13 +64,17 @@ class Hustle(db.Model):
     title = db.Column(db.String(100), nullable=False)
     type = db.Column(db.String(50), nullable=False)  # e.g., 'side hustle', 'investment'
     description = db.Column(db.String(200), nullable=True)
+    date = db.Column(db.Date, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
-    # relationships
+    # Relationships
     transactions = db.relationship('Transaction', backref='hustle', lazy=True)
     debts = db.relationship('Debt', backref='hustle', lazy=True)
     goals = db.relationship('Goal', backref='hustle', lazy=True)
+
+    def __repr__(self):
+        return f"<Hustle {self.id} - {self.title}>"
 
 
 class Transaction(db.Model):
@@ -60,9 +95,11 @@ class Debt(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     amount = db.Column(db.Float, nullable=False)
-    creditor = db.Column(db.String(100), nullable=False)
-    due_date = db.Column(db.DateTime, nullable=False)
-    status = db.Column(db.String(50), nullable=False)  # e.g., 'pending', 'paid'
+    description = db.Column(db.String, nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    creditor = db.Column(db.String(100), nullable=True)
+    due_date = db.Column(db.DateTime, nullable=True)
+    status = db.Column(db.String(50), nullable=True) # e.g., 'pending', 'paid'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)

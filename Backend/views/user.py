@@ -211,21 +211,21 @@ def confirm_password_reset():
     
     return jsonify({"success": "Password has been reset successfully"}), 200
 
-# Optional: endpoint to check if reset token is valid
-@user_bp.route("/users/password-reset/validate", methods=["POST"])
-def validate_reset_token():
-    data = request.get_json()
-    reset_token = data.get("reset_token")
+# # Optional: endpoint to check if reset token is valid
+# @user_bp.route("/users/password-reset/validate", methods=["POST"])
+# def validate_reset_token():
+#     data = request.get_json()
+#     reset_token = data.get("reset_token")
     
-    if not reset_token:
-        return jsonify({"error": "Reset token is required"}), 400
+#     if not reset_token:
+#         return jsonify({"error": "Reset token is required"}), 400
     
-    user = User.query.filter_by(reset_token=reset_token).first()
+#     user = User.query.filter_by(reset_token=reset_token).first()
     
-    if not user or user.reset_token_expires < datetime.utcnow():
-        return jsonify({"valid": False}), 200
+#     if not user or user.reset_token_expires < datetime.utcnow():
+#         return jsonify({"valid": False}), 200
     
-    return jsonify({"valid": True}), 200
+#     return jsonify({"valid": True}), 200
 
 
 
