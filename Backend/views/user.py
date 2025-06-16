@@ -156,29 +156,27 @@ def request_password_reset():
     
     user = User.query.filter_by(email=email).first()
     
-    # Always return success to prevent email enumeration
+   
     if not user:
         return jsonify({"success": "If the email exists, a reset link has been sent"}), 200
     
     # Generate reset token
     reset_token = secrets.token_urlsafe(32)
-    reset_token_expires = datetime.utcnow() + timedelta(hours=1)  # Token expires in 1 hour
+    reset_token_expires = datetime.utcnow() + timedelta(hours=1) 
     
     # Update user with reset token
     user.reset_token = reset_token
     user.reset_token_expires = reset_token_expires
     db.session.commit()
     
-    # In a real application, you would send an email here
-    # For now, we'll return the token (remove this in production!)
+   
     print(f"Password reset token for {email}: {reset_token}")
     
-    # TODO: Send email with reset link
-    # send_password_reset_email(user.email, reset_token)
+
     
     return jsonify({
         "success": "If the email exists, a reset link has been sent",
-        "reset_token": reset_token  # Remove this in production!
+        "reset_token": reset_token 
     }), 200
 
 # reset password with token
@@ -205,11 +203,11 @@ def confirm_password_reset():
     if user.reset_token_expires < datetime.utcnow():
         return jsonify({"error": "Reset token has expired"}), 400
     
-    # Update password and clear reset token
-    user.password = generate_password_hash(new_password)
-    user.reset_token = None
-    user.reset_token_expires = None
-    db.session.commit()
+    # # Update password and clear reset token
+    # user.password = generate_password_hash(new_password)
+    # user.reset_token = Non
+    # user.reset_token_expires = None
+    # db.session.commit()
     
     return jsonify({"success": "Password has been reset successfully"}), 200
 
