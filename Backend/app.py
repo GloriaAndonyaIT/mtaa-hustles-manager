@@ -24,8 +24,7 @@ db.init_app(app)
 mail = Mail(app)
 migrate = Migrate(app, db)
 
-# Import blueprints AFTER app and extensions are initialized
-# This prevents circular import issues
+
 from views.user import user_bp
 from views.debt import debt_bp
 from views.hustle import hustle_bp
