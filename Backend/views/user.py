@@ -1,15 +1,24 @@
 from flask import Flask, request, jsonify, Blueprint, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import db, User
+from models import db, User, Hustle, Transaction, Debt, Goal
 import secrets
 from datetime import datetime, timedelta
 from flask_mail import Message, Mail
+from flask_jwt_extended import jwt_required, get_jwt_identity
 
 user_bp = Blueprint('user', __name__)
 
 def get_mail():
     """Helper function to get mail instance from current app"""
     return current_app.extensions['mail']
+
+def get_current_user():
+    """Helper function to get current user from JWT"""
+    try:
+        current_user_id = get_jwt_identity()
+        return User.query.get(current_user_id) if current_user_id else None
+    except:
+        return None
 
 # REGISTER USER
 @user_bp.route("/users", methods=["POST"])
@@ -19,6 +28,7 @@ def create_user():
     username = data.get("username")
     email = data.get("email")
     password = data.get("password")
+    is_admin = data.get("is_admin", False)  # Allow setting admin during registration
 
     # Basic field validation
     if not username or not email or not password:
@@ -45,7 +55,12 @@ def create_user():
     try:
         # Hash password and create user
         hashed_password = generate_password_hash(password)
-        new_user = User(username=username, email=email, password=hashed_password)
+        new_user = User(
+            username=username, 
+            email=email, 
+            password=hashed_password,
+            is_admin=is_admin
+        )
         
         # Add user to database
         db.session.add(new_user)
@@ -61,7 +76,10 @@ def create_user():
         )
         mail.send(msg)
         
-        return jsonify({"success": "User created successfully"}), 201
+        return jsonify({
+            "success": "User created successfully",
+            "user": new_user.to_dict()
+        }), 201
 
     except Exception as e:
         db.session.rollback()
@@ -91,14 +109,7 @@ def login_user():
         return jsonify({"error": "Invalid username or password"}), 401
     
     # Return user info (excluding password)
-    user_data = {
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-        "is_admin": user.is_admin,
-        "created_at": user.created_at,
-        "updated_at": user.updated_at
-    }
+    user_data = user.to_dict()
     
     return jsonify({"success": "Login successful", "user": user_data}), 200
 
@@ -168,52 +179,197 @@ def verify_email_token(token):
 
 # Get user by ID
 @user_bp.route("/users/<user_id>", methods=["GET"])
+@jwt_required()
 def fetch_user_by_id(user_id):
+    current_user = get_current_user()
+    
+    if not current_user:
+        return jsonify({"error": "User not found"}), 404
+    
+    # Users can only view their own profile unless they're admin
+    if not current_user.is_admin and str(current_user.id) != str(user_id):
+        return jsonify({"error": "Access denied"}), 403
+    
     user = User.query.get(user_id)
 
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    user_data = {
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-        "is_admin": user.is_admin,
-        "created_at": user.created_at,
-        "updated_at": user.updated_at
-    }
-    return jsonify(user_data), 200
+    # Return detailed info if admin, basic info if user viewing themselves
+    if current_user.is_admin:
+        return jsonify(user.to_dict_with_relations()), 200
+    else:
+        return jsonify(user.to_dict()), 200
 
 
-# Get all users
+# Get all users (Admin only)
 @user_bp.route("/users", methods=["GET"])
+@jwt_required()
 def fetch_all_users():
-    users = User.query.all()
+    current_user = get_current_user()
+    
+    if not current_user:
+        return jsonify({"error": "User not found"}), 404
+    
+    if not current_user.is_admin:
+        return jsonify({"error": "Admin access required"}), 403
 
-    user_list = []
-    for user in users:
-        user_data = {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "is_admin": user.is_admin,
-            "created_at": user.created_at,
-            "updated_at": user.updated_at
-        }
-        user_list.append(user_data)
-    return jsonify(user_list), 200
+    users = User.query.all()
+    user_list = [user.to_dict_with_relations() for user in users]
+    
+    return jsonify({
+        "users": user_list,
+        "total_users": len(user_list)
+    }), 200
+
+
+# Get user statistics (Admin only)
+@user_bp.route("/users/stats", methods=["GET"])
+@jwt_required()
+def get_user_stats():
+    current_user = get_current_user()
+    
+    if not current_user:
+        return jsonify({"error": "User not found"}), 404
+    
+    if not current_user.is_admin:
+        return jsonify({"error": "Admin access required"}), 403
+    
+    # Get user statistics
+    total_users = User.query.count()
+    admin_users = User.query.filter_by(is_admin=True).count()
+    verified_users = User.query.filter_by(is_verified=True).count()
+    
+    # Get recent users (last 30 days)
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    recent_users = User.query.filter(User.created_at >= thirty_days_ago).count()
+    
+    # Get users with hustles
+    users_with_hustles = db.session.query(User.id).join(Hustle).distinct().count()
+    
+    return jsonify({
+        "total_users": total_users,
+        "admin_users": admin_users,
+        "verified_users": verified_users,
+        "recent_users_30_days": recent_users,
+        "users_with_hustles": users_with_hustles,
+        "verification_rate": round((verified_users / total_users * 100), 2) if total_users > 0 else 0
+    }), 200
+
+
+# Promote user to admin (Admin only)
+@user_bp.route("/users/<user_id>/promote", methods=["PUT"])
+@jwt_required()
+def promote_user_to_admin(user_id):
+    current_user = get_current_user()
+    
+    if not current_user:
+        return jsonify({"error": "User not found"}), 404
+    
+    if not current_user.is_admin:
+        return jsonify({"error": "Admin access required"}), 403
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    
+    if user.is_admin:
+        return jsonify({"error": "User is already an admin"}), 400
+    
+    try:
+        user.is_admin = True
+        user.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        # Send notification email
+        mail = get_mail()
+        msg = Message(
+            subject="Admin Privileges Granted",
+            recipients=[user.email],
+            sender=current_app.config['MAIL_DEFAULT_SENDER'],
+            body=f"Hello {user.username},\n\nYou have been granted admin privileges on Mtaa Hustle Manager.\n\nBest regards,\nMtaa Hustle Manager Team"
+        )
+        mail.send(msg)
+        
+        return jsonify({"success": f"User {user.username} promoted to admin successfully"}), 200
+    
+    except Exception as e:
+        db.session.rollback()
+        print(f"User promotion error: {str(e)}")
+        return jsonify({"error": "Failed to promote user"}), 500
+
+
+# Demote admin to regular user (Admin only)
+@user_bp.route("/users/<user_id>/demote", methods=["PUT"])
+@jwt_required()
+def demote_admin_to_user(user_id):
+    current_user = get_current_user()
+    
+    if not current_user:
+        return jsonify({"error": "User not found"}), 404
+    
+    if not current_user.is_admin:
+        return jsonify({"error": "Admin access required"}), 403
+    
+    # Prevent self-demotion
+    if str(current_user.id) == str(user_id):
+        return jsonify({"error": "Cannot demote yourself"}), 400
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    
+    if not user.is_admin:
+        return jsonify({"error": "User is not an admin"}), 400
+    
+    try:
+        user.is_admin = False
+        user.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        # Send notification email
+        mail = get_mail()
+        msg = Message(
+            subject="Admin Privileges Revoked",
+            recipients=[user.email],
+            sender=current_app.config['MAIL_DEFAULT_SENDER'],
+            body=f"Hello {user.username},\n\nYour admin privileges have been revoked on Mtaa Hustle Manager.\n\nBest regards,\nMtaa Hustle Manager Team"
+        )
+        mail.send(msg)
+        
+        return jsonify({"success": f"User {user.username} demoted to regular user successfully"}), 200
+    
+    except Exception as e:
+        db.session.rollback()
+        print(f"User demotion error: {str(e)}")
+        return jsonify({"error": "Failed to demote user"}), 500
 
 
 # Update user password
 @user_bp.route("/users/<user_id>/password", methods=["PUT"])
+@jwt_required()
 def update_password(user_id):
+    current_user = get_current_user()
+    
+    if not current_user:
+        return jsonify({"error": "User not found"}), 404
+    
+    # Users can only update their own password unless they're admin
+    if not current_user.is_admin and str(current_user.id) != str(user_id):
+        return jsonify({"error": "Access denied"}), 403
+    
     data = request.get_json()
     
     current_password = data.get("current_password")
     new_password = data.get("new_password")
     
-    if not current_password or not new_password:
-        return jsonify({"error": "Current password and new password are required"}), 400
+    # Admin can skip current password verification
+    if not current_user.is_admin:
+        if not current_password or not new_password:
+            return jsonify({"error": "Current password and new password are required"}), 400
+    else:
+        if not new_password:
+            return jsonify({"error": "New password is required"}), 400
     
     if len(new_password) < 6:
         return jsonify({"error": "New password must be at least 6 characters long"}), 400
@@ -222,13 +378,14 @@ def update_password(user_id):
     if not user:
         return jsonify({"error": "User not found"}), 404
     
-    # Verify current password
-    if not check_password_hash(user.password, current_password):
+    # Verify current password (skip for admin)
+    if not current_user.is_admin and not check_password_hash(user.password, current_password):
         return jsonify({"error": "Current password is incorrect"}), 401
     
     try:
         # Update password
         user.password = generate_password_hash(new_password)
+        user.updated_at = datetime.utcnow()
         db.session.commit()
         
         return jsonify({"success": "Password updated successfully"}), 200
@@ -306,6 +463,7 @@ def confirm_password_reset():
         user.password = generate_password_hash(new_password)
         user.reset_token = None
         user.reset_token_expires = None
+        user.updated_at = datetime.utcnow()
         db.session.commit()
         
         return jsonify({"success": "Password has been reset successfully"}), 200
@@ -318,7 +476,17 @@ def confirm_password_reset():
 
 # Update user profile
 @user_bp.route("/users/<user_id>", methods=["PUT"])
+@jwt_required()
 def update_user(user_id):
+    current_user = get_current_user()
+    
+    if not current_user:
+        return jsonify({"error": "User not found"}), 404
+    
+    # Users can only update their own profile unless they're admin
+    if not current_user.is_admin and str(current_user.id) != str(user_id):
+        return jsonify({"error": "Access denied"}), 403
+    
     data = request.get_json()
     
     username = data.get("username")
@@ -343,6 +511,7 @@ def update_user(user_id):
         # Update user details
         user.username = username
         user.email = email
+        user.updated_at = datetime.utcnow()
         db.session.commit()
         
         # Send profile update notification email
@@ -363,13 +532,27 @@ def update_user(user_id):
         return jsonify({"error": "Failed to update user profile"}), 500
 
 
-# Delete user
+# Delete user (Admin only or self-delete)
 @user_bp.route("/users/<user_id>", methods=["DELETE"])
+@jwt_required()
 def delete_user(user_id):
+    current_user = get_current_user()
+    
+    if not current_user:
+        return jsonify({"error": "User not found"}), 404
+    
+    # Users can delete themselves or admin can delete any user
+    if not current_user.is_admin and str(current_user.id) != str(user_id):
+        return jsonify({"error": "Access denied"}), 403
+    
     user = User.query.get(user_id)
     
     if not user:
         return jsonify({"error": "User not found"}), 404
+    
+    # Prevent admin from deleting themselves
+    if current_user.is_admin and str(current_user.id) == str(user_id):
+        return jsonify({"error": "Admin cannot delete their own account"}), 400
     
     try:
         db.session.delete(user)
@@ -385,7 +568,17 @@ def delete_user(user_id):
 
 # Delete user email (this endpoint seems unusual - consider if it's really needed)
 @user_bp.route("/users/<user_id>/delete-email", methods=["DELETE"])
+@jwt_required()
 def delete_user_email(user_id):
+    current_user = get_current_user()
+    
+    if not current_user:
+        return jsonify({"error": "User not found"}), 404
+    
+    # Users can only delete their own email unless they're admin
+    if not current_user.is_admin and str(current_user.id) != str(user_id):
+        return jsonify({"error": "Access denied"}), 403
+    
     user = User.query.get(user_id)
     
     if not user:
@@ -407,6 +600,7 @@ def delete_user_email(user_id):
         
         # Clear the user's email
         user.email = None
+        user.updated_at = datetime.utcnow()
         db.session.commit()
         
         return jsonify({"success": "Email deleted successfully"}), 200
