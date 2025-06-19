@@ -147,6 +147,20 @@ class Debt(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     hustle_id = db.Column(db.Integer, db.ForeignKey('hustles.id'), nullable=True)
 
+    def to_dict(self):
+            return {
+            "id": self.id,
+            "amount": self.amount,
+            "description": self.description,
+            "creditor": self.creditor,
+            "date": self.date.isoformat() if self.date else None,
+            "due_date": self.due_date.isoformat() if self.due_date else None,
+            "status": self.status,
+            "hustle_id": self.hustle_id,
+            "user_id": self.user_id,
+            "hustle_title": self.hustle.title if self.hustle else None
+        }
+
 
 class Goal(db.Model):
     __tablename__ = 'goals'
