@@ -32,7 +32,7 @@ migrate = Migrate(app, db)
 #JWT configurations
 from flask_jwt_extended import JWTManager
 app.config["JWT_SECRET_KEY"] = "fghhhhaszdxfcwaesrdgdf"  
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)  # Token expires in 1 day
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
 from datetime import timedelta
 jwt = JWTManager(app)
 jwt.init_app(app)
