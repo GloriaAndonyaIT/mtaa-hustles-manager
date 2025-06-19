@@ -116,6 +116,20 @@ class Transaction(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     hustle_id = db.Column(db.Integer, db.ForeignKey('hustles.id'), nullable=True)
+    
+    # Add to_dict method
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'description': self.description,
+            'amount': self.amount,
+            'type': self.type,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'user_id': self.user_id,
+            'hustle_id': self.hustle_id,
+            'hustle_title': self.hustle.title if self.hustle else None
+        }
 
 
 class Debt(db.Model):

@@ -26,7 +26,7 @@ def get_current_user():
 def create_hustle():
     data = request.get_json()
     current_user = get_current_user()
-    
+
     if not current_user:
         return jsonify({"error": "User not found"}), 404
 
@@ -34,29 +34,38 @@ def create_hustle():
     hustle_type = data.get("type")
     description = data.get("description")
     date_str = data.get("date")
-    
-    # For admin: allow specifying user_id, otherwise use current user
-    user_id = data.get("user_id") if current_user.is_admin else current_user.id
 
     if not title or not hustle_type or not description or not date_str:
         return jsonify({"error": "Title, type, description, and date are required"}), 400
 
-    # If admin specifies user_id, validate it exists
-    if current_user.is_admin and user_id:
+    # For admins, allow specifying user_id
+    if current_user.is_admin:
+        user_id = data.get("user_id")
+        if not user_id:
+            return jsonify({"error": "Admin must provide user_id"}), 400
         target_user = User.query.get(user_id)
         if not target_user:
             return jsonify({"error": "Specified user not found"}), 404
-    
+    else:
+        user_id = current_user.id
+
     try:
         date = datetime.strptime(date_str, "%Y-%m-%d").date()
     except ValueError:
         return jsonify({"error": "Invalid date format. Use YYYY-MM-DD"}), 400
 
-    new_hustle = Hustle(title=title, type=hustle_type, description=description, date=date, user_id=user_id)
+    new_hustle = Hustle(
+        title=title,
+        type=hustle_type,
+        description=description,
+        date=date,
+        user_id=user_id
+    )
     db.session.add(new_hustle)
     db.session.commit()
 
     return jsonify({"success": "Hustle created successfully", "hustle_id": new_hustle.id}), 201
+
 
 
 # GET HUSTLE BY ID
