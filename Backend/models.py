@@ -175,3 +175,18 @@ class Goal(db.Model):
     
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     hustle_id = db.Column(db.Integer, db.ForeignKey('hustles.id'), nullable=True)
+
+
+    def to_dict(self):
+        return {
+        "id": self.id,
+        "title": self.title,
+        "description": self.description,
+        "status": self.status,
+        "due_date": self.due_date.isoformat() if self.due_date else None,
+        "user_id": self.user_id,
+        "hustle_id": self.hustle_id,
+        "hustle_title": self.hustle.title if self.hustle else None,
+        "created_at": self.created_at.isoformat() if self.created_at else None,
+        "updated_at": self.updated_at.isoformat() if self.updated_at else None
+    }
