@@ -1,13 +1,11 @@
 from flask import Flask, request, jsonify, Blueprint, current_app
-from werkzeug.security import  check_password_hash
+from werkzeug.security import check_password_hash
 from models import db, User, TokenBlocklist
-from flask_jwt_extended import create_access_token,get_jwt_identity, jwt_required, get_jwt
+from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, get_jwt
 from datetime import datetime
 from datetime import timezone
 
 auth_bp = Blueprint('auth', __name__)
-
-
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
@@ -16,17 +14,15 @@ def login():
 
     if not email or not password:
         return jsonify({"error": "email and password are required to login"}), 400
-     
+
     user = User.query.filter_by(email=email).first()
 
     if user and check_password_hash(user.password, password):
         access_token = create_access_token(identity=user.id)
-        return jsonify(access_token=access_token)     
+        return jsonify(access_token=access_token), 200     
 
     else:
-        return jsonify({"error": "User does not exists"}), 400
-    
-
+        return jsonify({"error": "Invalid credentials"}), 401
 
 #  fetching logged in user
 @auth_bp.route("/current_user", methods=["GET"])
@@ -44,13 +40,10 @@ def fetch_current_user():
         "username": user.username,
         "email": user.email,
         "is_admin": user.is_admin,
-        "created_at": user.created_at,
-        "updated_at": user.updated_at
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+        "updated_at": user.updated_at.isoformat() if user.updated_at else None
     }
     return jsonify(user_data), 200
-
-
-
 
 # Logout
 @auth_bp.route("/logout", methods=["DELETE"])
@@ -59,7 +52,7 @@ def modify_token():
     jti = get_jwt()["jti"]
     now = datetime.now(timezone.utc)
 
-    new_blocked_token =TokenBlocklist(jti=jti, created_at=now)
+    new_blocked_token = TokenBlocklist(jti=jti, created_at=now)
     db.session.add(new_blocked_token)
     db.session.commit()
     return jsonify({"success": "Successfully logged out"}), 200

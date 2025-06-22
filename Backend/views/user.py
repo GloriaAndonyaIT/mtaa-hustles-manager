@@ -73,15 +73,18 @@ def create_user():
         db.session.add(new_user)
         db.session.commit()
         
-        # Send welcome email
-        mail = get_mail()
-        msg = Message(
-            subject="Welcome to Mtaa Hustles Manager",
-            recipients=[email],
-            sender=current_app.config['MAIL_DEFAULT_SENDER'],
-            body=f"Hello {username},\n\nThank you for registering on Mtaa Hustle Manager.\n\nBest regards,\nMtaa Hustle Manager Team"
-        )
-        mail.send(msg)
+        # Send welcome email (optional - comment out if mail is not configured)
+        try:
+            mail = get_mail()
+            msg = Message(
+                subject="Welcome to Mtaa Hustles Manager",
+                recipients=[email],
+                sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@example.com'),
+                body=f"Hello {username},\n\nThank you for registering on Mtaa Hustle Manager.\n\nBest regards,\nMtaa Hustle Manager Team"
+            )
+            mail.send(msg)
+        except Exception as mail_error:
+            current_app.logger.warning(f"Failed to send welcome email: {str(mail_error)}")
         
         # Generate tokens for immediate login after registration
         access_token = create_access_token(identity=new_user.id)
@@ -91,7 +94,12 @@ def create_user():
             "success": "User created successfully",
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "user": new_user.to_dict()
+            "user": new_user.to_dict() if hasattr(new_user, 'to_dict') else {
+                "id": new_user.id,
+                "username": new_user.username,
+                "email": new_user.email,
+                "is_admin": new_user.is_admin
+            }
         }), 201
 
     except Exception as e:
@@ -125,7 +133,12 @@ def login_user():
     response = jsonify({
         "success": "Login successful",
         "access_token": access_token,
-        "user": user.to_dict()
+        "user": user.to_dict() if hasattr(user, 'to_dict') else {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "is_admin": user.is_admin
+        }
     })
     
     # Set cookies if using cookie-based auth
@@ -185,8 +198,8 @@ def verify_email():
         msg = Message(
             subject="Email Verification",
             recipients=[email],
-            sender=current_app.config['MAIL_DEFAULT_SENDER'],
-            body=f"Please verify your email by clicking: {current_app.config['FRONTEND_URL']}/verify-email/{verification_token}"
+            sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@example.com'),
+            body=f"Please verify your email by clicking: {current_app.config.get('FRONTEND_URL', 'http://localhost:3000')}/verify-email/{verification_token}"
         )
         mail.send(msg)
         
@@ -233,9 +246,14 @@ def fetch_user_by_id(user_id):
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    return jsonify(user.to_dict_with_relations() if current_user.is_admin else user.to_dict()), 200
-
-# [Include all your other existing endpoints here...]
+    user_dict = user.to_dict_with_relations() if (hasattr(user, 'to_dict_with_relations') and current_user.is_admin) else (user.to_dict() if hasattr(user, 'to_dict') else {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "is_admin": user.is_admin
+    })
+    
+    return jsonify(user_dict), 200
 
 # Password reset request
 @user_bp.route("/users/password-reset/request", methods=["POST"])
@@ -263,8 +281,8 @@ def request_password_reset():
         msg = Message(
             subject="Password Reset Request",
             recipients=[email],
-            sender=current_app.config['MAIL_DEFAULT_SENDER'],
-            body=f"Reset your password: {current_app.config['FRONTEND_URL']}/reset-password/{reset_token}"
+            sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@example.com'),
+            body=f"Reset your password: {current_app.config.get('FRONTEND_URL', 'http://localhost:3000')}/reset-password/{reset_token}"
         )
         mail.send(msg)
         
@@ -310,3 +328,107 @@ def confirm_password_reset():
         db.session.rollback()
         current_app.logger.error(f"Password reset error: {str(e)}")
         return jsonify({"error": "Failed to reset password"}), 500
+
+
+
+
+# GET CURRENT USER PROFILE
+@user_bp.route("/users/me", methods=["GET"])
+@jwt_required()
+def get_current_user_profile():
+    """Get the current authenticated user's profile"""
+    current_user = get_current_user()
+    
+    if not current_user:
+        return jsonify({"error": "User not found"}), 404
+    
+    user_dict = current_user.to_dict() if hasattr(current_user, 'to_dict') else {
+        "id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "is_admin": current_user.is_admin
+    }
+    
+    return jsonify(user_dict), 200
+
+# UPDATE USER PROFILE
+@user_bp.route("/users/<int:user_id>", methods=["PUT"])
+@jwt_required()
+def update_user(user_id):
+    current_user = get_current_user()
+    if not current_user or (not current_user.is_admin and current_user.id != user_id):
+        return jsonify({"error": "Unauthorized access"}), 403
+
+    data = request.get_json()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    user.username = data.get("username", user.username)
+    user.email = data.get("email", user.email)
+    user.updated_at = datetime.utcnow()
+
+    if "password" in data:
+        if len(data["password"]) < 6:
+            return jsonify({"error": "Password must be at least 6 characters"}), 400
+        user.password = generate_password_hash(data["password"])
+
+    try:
+        db.session.commit()
+        user_dict = user.to_dict() if hasattr(user, 'to_dict') else {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "is_admin": user.is_admin
+        }
+        return jsonify({"success": "Profile updated successfully", "user": user_dict}), 200
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Profile update error: {str(e)}")
+        return jsonify({"error": "Failed to update profile"}), 500
+
+# DELETE USER ACCOUNT
+@user_bp.route("/users/<int:user_id>", methods=["DELETE"])
+@jwt_required()
+def delete_user(user_id):
+    current_user = get_current_user()
+    if not current_user or (not current_user.is_admin and current_user.id != user_id):
+        return jsonify({"error": "Unauthorized access"}), 403
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    try:
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({"success": "User account deleted successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Delete user error: {str(e)}")
+        return jsonify({"error": "Failed to delete account"}), 500
+
+# ADMIN: VIEW ALL USERS
+@user_bp.route("/admin/users", methods=["GET"])
+@jwt_required()
+def admin_view_users():
+    current_user = get_current_user()
+    if not current_user or not current_user.is_admin:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    users = User.query.all()
+    users_list = []
+    for user in users:
+        if hasattr(user, 'to_dict_with_relations'):
+            users_list.append(user.to_dict_with_relations())
+        elif hasattr(user, 'to_dict'):
+            users_list.append(user.to_dict())
+        else:
+            users_list.append({
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "is_admin": user.is_admin
+            })
+    
+    return jsonify(users_list), 200
