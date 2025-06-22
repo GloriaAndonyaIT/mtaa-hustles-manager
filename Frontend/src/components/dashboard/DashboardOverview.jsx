@@ -39,15 +39,33 @@ const MPesaTooltip = ({ active, payload, label }) => {
 const DashboardOverview = ({ dashboardData }) => {
   const navigate = useNavigate();
   const [activeChart, setActiveChart] = useState('monthly');
-  const netProfit = dashboardData.totalIncome - dashboardData.totalExpenses;
+  const netProfit = dashboardData?.totalIncome - dashboardData?.totalExpenses || 0;
+
+  if (!dashboardData) {
+    return (
+      <div className="p-6">
+        <div className="text-center py-10">
+          <p className="text-gray-500">Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-teal-600 to-teal-700 text-white p-6 rounded-xl shadow-lg">
-        <h1 className="text-2xl font-bold mb-2">Karibu, {dashboardData.userName}! Welcome back 👋</h1>
-        <p className="text-teal-100">Here's how your hustles are performing today</p>
-      </div>
+    
+<div className="bg-gradient-to-r from-teal-600 to-teal-700 text-white p-6 rounded-xl shadow-lg">
+  <h1 className="text-2xl font-bold mb-2">
+    {(() => {
+      const hour = new Date().getHours();
+      if (hour < 12) return `Good morning, ${dashboardData.userName || 'User'}!`;
+      if (hour < 18) return `Good afternoon, ${dashboardData.userName || 'User'}!`;
+      return `Good evening, ${dashboardData.userName || 'User'}!`;
+    })()}
+  </h1>
+  <p className="text-teal-100">Here's how your hustles are performing today</p>
+</div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -56,15 +74,23 @@ const DashboardOverview = ({ dashboardData }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Income</p>
-              <p className="text-2xl font-bold text-gray-900">KSh {dashboardData.totalIncome.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                KSh {(dashboardData.totalIncome || 0).toLocaleString()}
+              </p>
             </div>
             <div className="p-3 bg-green-100 rounded-full">
               <TrendingUp className="h-6 w-6 text-green-600" />
             </div>
           </div>
           <div className="mt-4 flex items-center">
-            <ArrowUpRight className="h-4 w-4 text-green-500 mr-1" />
-            <span className="text-sm text-green-600 font-medium">+12% from last month</span>
+            {dashboardData.incomeChange >= 0 ? (
+              <ArrowUpRight className="h-4 w-4 text-green-500 mr-1" />
+            ) : (
+              <ArrowDownRight className="h-4 w-4 text-red-500 mr-1" />
+            )}
+            <span className={`text-sm font-medium ${dashboardData.incomeChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {dashboardData.incomeChange >= 0 ? '+' : ''}{dashboardData.incomeChange || 0}% from last month
+            </span>
           </div>
         </div>
 
@@ -73,15 +99,23 @@ const DashboardOverview = ({ dashboardData }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Expenses</p>
-              <p className="text-2xl font-bold text-gray-900">KSh {dashboardData.totalExpenses.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                KSh {(dashboardData.totalExpenses || 0).toLocaleString()}
+              </p>
             </div>
             <div className="p-3 bg-red-100 rounded-full">
               <TrendingDown className="h-6 w-6 text-red-600" />
             </div>
           </div>
           <div className="mt-4 flex items-center">
-            <ArrowDownRight className="h-4 w-4 text-red-500 mr-1" />
-            <span className="text-sm text-red-600 font-medium">+8% from last month</span>
+            {dashboardData.expensesChange >= 0 ? (
+              <ArrowUpRight className="h-4 w-4 text-red-500 mr-1" />
+            ) : (
+              <ArrowDownRight className="h-4 w-4 text-green-500 mr-1" />
+            )}
+            <span className={`text-sm font-medium ${dashboardData.expensesChange >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+              {dashboardData.expensesChange >= 0 ? '+' : ''}{dashboardData.expensesChange || 0}% from last month
+            </span>
           </div>
         </div>
 
@@ -112,7 +146,7 @@ const DashboardOverview = ({ dashboardData }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Active Hustles</p>
-              <p className="text-2xl font-bold text-gray-900">{dashboardData.activeHustles}</p>
+              <p className="text-2xl font-bold text-gray-900">{dashboardData.activeHustles || 0}</p>
             </div>
             <div className="p-3 bg-blue-100 rounded-full">
               <Users className="h-6 w-6 text-blue-600" />
@@ -131,7 +165,7 @@ const DashboardOverview = ({ dashboardData }) => {
       </div>
 
       {/* Analytics Section */}
-      {dashboardData.monthlyData.length > 0 && (
+      {dashboardData.monthlyData?.length > 0 && (
         <div className="bg-white rounded-3xl shadow-lg border-0">
           <div className="p-8">
             <div className="flex items-center justify-between mb-8">
@@ -197,7 +231,7 @@ const DashboardOverview = ({ dashboardData }) => {
                       axisLine={true}
                       tickLine={true}
                       tick={{ dx: 5, fill: '#6b7280' }}
-                      tickFormatter={(value) => `${((value / dashboardData.totalIncome) * 100).toFixed(0)}%`}
+                      tickFormatter={(value) => `${((value / (dashboardData.totalIncome || 1)) * 100).toFixed(0)}%`}
                     />
                     <Tooltip content={<MPesaTooltip />} />
                     <Line
@@ -275,7 +309,7 @@ const DashboardOverview = ({ dashboardData }) => {
       </div>
 
       {/* Hustles Performance */}
-      {dashboardData.hustles.length > 0 && (
+      {dashboardData.hustles?.length > 0 && (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-900">Your Hustles Performance</h2>
@@ -323,7 +357,7 @@ const DashboardOverview = ({ dashboardData }) => {
       )}
 
       {/* Recent Activity */}
-      {dashboardData.recentTransactions.length > 0 && (
+      {dashboardData.recentTransactions?.length > 0 && (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
