@@ -72,6 +72,7 @@ from views.hustle import hustle_bp
 from views.transactions import transaction_bp
 from views.goal import goal_bp
 from views.auth import auth_bp
+from views.dashboard import dashboard_bp
 
 # Register blueprints
 app.register_blueprint(user_bp)
@@ -80,6 +81,7 @@ app.register_blueprint(hustle_bp)
 app.register_blueprint(transaction_bp) 
 app.register_blueprint(goal_bp)
 app.register_blueprint(auth_bp)
+app.register_blueprint(dashboard_bp) 
 
 if __name__ == '__main__':
     with app.app_context():
