@@ -2,8 +2,7 @@ import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import LandingPage from "./components/common/LandingPage";
-import LoginPage from "./components/auth/LoginPage";
-import SignupForm from "./components/auth/SignupForm";
+import AuthPage from "./pages/AuthPage";
 import LoadingSpinner from "./components/common/LoadingSpinner";
 import Navigation from "./components/common/Navigation";
 import DashboardOverview from "./components/dashboard/DashboardOverview";
@@ -108,23 +107,25 @@ function AppContent() {
 
   return (
     <Routes>
-      
+      {/* Public Routes */}
       <Route path="/" element={
         <PublicRoute>
           <LandingPage />
         </PublicRoute>
       } />
-      <Route path="/login" element={
+      
+      {/* Authentication Routes */}
+      <Route path="/auth/:mode" element={
         <PublicRoute>
-          <LoginPage />
-        </PublicRoute>
-      } />
-      <Route path="/signup" element={
-        <PublicRoute>
-          <SignupForm />
+          <AuthPage />
         </PublicRoute>
       } />
       
+      {/* Legacy route redirects for backward compatibility */}
+      <Route path="/login" element={<Navigate to="/auth/login" replace />} />
+      <Route path="/signup" element={<Navigate to="/auth/signup" replace />} />
+      
+      {/* Protected Routes */}
       <Route path="/dashboard" element={
         <ProtectedRoute>
           <AppLayout>
@@ -140,6 +141,7 @@ function AppContent() {
         </ProtectedRoute>
       } />
       
+      {/* Catch all route */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
