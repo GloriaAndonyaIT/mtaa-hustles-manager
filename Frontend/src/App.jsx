@@ -1,3 +1,4 @@
+// src/App.jsx
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -5,7 +6,7 @@ import LandingPage from "./components/common/LandingPage";
 import AuthPage from "./pages/AuthPage";
 import LoadingSpinner from "./components/common/LoadingSpinner";
 import Navigation from "./components/common/Navigation";
-import DashboardOverview from "./components/dashboard/DashboardOverview";
+import Dashboard from "./pages/Dashboard";
 import MyHustlesPage from './components/hustles/MyHustlesPage';
 
 const ProtectedRoute = ({ children }) => {
@@ -55,41 +56,6 @@ const AppLayout = ({ children }) => {
   );
 };
 
-const Dashboard = () => {
-  const dashboardData = {
-    totalIncome: 45000,
-    totalExpenses: 32000,
-    totalDebts: 8500,
-    activeHustles: 3,
-    recentTransactions: [
-      { id: 1, type: 'income', amount: 2500, description: 'Mama Mboga Sales', hustle: 'Vegetable Stand', date: '2025-06-02' },
-      { id: 2, type: 'expense', amount: 800, description: 'Transport', hustle: 'Boda Boda', date: '2025-06-02' },
-      { id: 3, type: 'income', amount: 3200, description: 'Mitumba Sales', hustle: 'Clothing Business', date: '2025-06-01' },
-      { id: 4, type: 'debt', amount: 1500, description: 'Loan to Wanjiku', hustle: 'Personal', date: '2025-06-01' }
-    ],
-    hustles: [
-      { id: 1, name: 'Mama Mboga Stand', income: 25000, expenses: 18000, profit: 7000, status: 'active' },
-      { id: 2, name: 'Boda Boda', income: 15000, expenses: 8000, profit: 7000, status: 'active' },
-      { id: 3, name: 'Mitumba Business', income: 5000, expenses: 6000, profit: -1000, status: 'needs_attention' }
-    ],
-    monthlyData: [
-      { month: 'Jan', income: 35000, expenses: 25000, profit: 10000 },
-      { month: 'Feb', income: 38000, expenses: 28000, profit: 10000 },
-      { month: 'Mar', income: 42000, expenses: 30000, profit: 12000 },
-      { month: 'Apr', income: 40000, expenses: 29000, profit: 11000 },
-      { month: 'May', income: 43000, expenses: 31000, profit: 12000 },
-      { month: 'Jun', income: 45000, expenses: 32000, profit: 13000 }
-    ],
-    hustleComparison: [
-      { name: 'Mama Mboga', income: 25000, expenses: 18000, profit: 7000 },
-      { name: 'Boda Boda', income: 15000, expenses: 8000, profit: 7000 },
-      { name: 'Mitumba', income: 5000, expenses: 6000, profit: -1000 }
-    ]
-  };
-
-  return <DashboardOverview dashboardData={dashboardData} />;
-};
-
 function AppContent() {
   const [loading, setLoading] = useState(true);
 
@@ -121,7 +87,7 @@ function AppContent() {
         </PublicRoute>
       } />
       
-      {/* Legacy route redirects for backward compatibility */}
+      {/* Legacy route redirects */}
       <Route path="/login" element={<Navigate to="/auth/login" replace />} />
       <Route path="/signup" element={<Navigate to="/auth/signup" replace />} />
       

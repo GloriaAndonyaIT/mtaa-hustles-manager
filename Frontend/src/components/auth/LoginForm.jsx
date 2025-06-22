@@ -1,3 +1,4 @@
+// LoginForm.jsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -18,14 +19,14 @@ const LoginForm = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
     if (error) setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
+    setError('');
+
     if (!formData.email || !formData.password) {
       setError('Please fill in all fields');
       setIsLoading(false);
@@ -33,14 +34,32 @@ const LoginForm = () => {
     }
 
     try {
-      const success = login(formData.email, formData.password);
-      if (success) {
-        navigate('/dashboard');
+      const response = await fetch('http://127.0.0.1:5000/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const success = await login(data.access_token);
+        if (success) {
+          navigate('/dashboard');
+        } else {
+          setError('Login failed. Please try again.');
+        }
       } else {
-        setError('Invalid credentials');
+        setError(data.error || 'Login failed. Please check your credentials.');
       }
     } catch (err) {
-      setError('An error occurred. Please try again.');
+      console.error('Login error:', err);
+      setError('Network error. Please check your connection.');
     } finally {
       setIsLoading(false);
     }
@@ -49,7 +68,7 @@ const LoginForm = () => {
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
       <ErrorMessage error={error} />
-      
+
       <div className="space-y-4">
         <FormInput
           type="email"
@@ -59,7 +78,7 @@ const LoginForm = () => {
           placeholder="Email"
           required
         />
-        
+
         <FormInput
           type="password"
           name="password"
@@ -68,7 +87,7 @@ const LoginForm = () => {
           placeholder="Password"
           required
         />
-        
+
         <FormButton 
           type="submit" 
           isLoading={isLoading}
