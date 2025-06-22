@@ -1,3 +1,4 @@
+// SignupForm.jsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -16,12 +17,11 @@ const SignupForm = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { signup } = useAuth();
+  const { login } = useAuth();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
     if (error) setError('');
   };
 
@@ -30,35 +30,55 @@ const SignupForm = () => {
       setError('Please fill in all fields');
       return false;
     }
-    
+
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return false;
     }
-    
+
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters long');
       return false;
     }
-    
+
     return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
+    setError('');
+
     if (!validateForm()) {
       setIsLoading(false);
       return;
     }
 
     try {
-      // Signup user and redirect to dashboard immediately
-      signup(formData.firstName, formData.lastName, formData.email, formData.password);
-      navigate('/dashboard');
+      const response = await fetch('http://127.0.0.1:5000/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: `${formData.firstName} ${formData.lastName}`,
+          email: formData.email,
+          password: formData.password,
+          is_admin: false
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        await login(data.access_token);
+        navigate('/dashboard');
+      } else {
+        setError(data.error || 'Registration failed. Please try again.');
+      }
     } catch (err) {
-      setError('An error occurred during signup. Please try again.');
+      console.error('Signup error:', err);
+      setError('Network error. Please check your connection.');
     } finally {
       setIsLoading(false);
     }
@@ -69,7 +89,7 @@ const SignupForm = () => {
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
       <ErrorMessage error={error} />
-      
+
       <div className="space-y-4">
         <FormInput
           type="text"
@@ -79,7 +99,7 @@ const SignupForm = () => {
           placeholder="First Name"
           required
         />
-        
+
         <FormInput
           type="text"
           name="lastName"
@@ -88,7 +108,7 @@ const SignupForm = () => {
           placeholder="Last Name"
           required
         />
-        
+
         <FormInput
           type="email"
           name="email"
@@ -97,7 +117,7 @@ const SignupForm = () => {
           placeholder="Email"
           required
         />
-        
+
         <FormInput
           type="password"
           name="password"
@@ -106,7 +126,7 @@ const SignupForm = () => {
           placeholder="Password"
           required
         />
-        
+
         <FormInput
           type="password"
           name="confirmPassword"
@@ -115,7 +135,7 @@ const SignupForm = () => {
           placeholder="Confirm Password"
           required
         />
-        
+
         <FormButton 
           type="submit" 
           isLoading={isLoading}
