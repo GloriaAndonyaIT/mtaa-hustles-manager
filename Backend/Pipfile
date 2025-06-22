@@ -8,6 +8,11 @@ flask-sqlalchemy = "*"
 
 flask-sqlalchemy = "*"
 flask = "*"
+
+
+
+
+
 flask-migrate = "*"
 flask-mail = "*"
 flask-jwt-extended = "*"
