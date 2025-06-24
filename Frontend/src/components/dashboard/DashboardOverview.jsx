@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   PlusCircle, 
   TrendingUp, 
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const MPesaTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
@@ -36,12 +37,225 @@ const MPesaTooltip = ({ active, payload, label }) => {
   return null;
 };
 
-const DashboardOverview = ({ dashboardData }) => {
+const DashboardOverview = () => {
   const navigate = useNavigate();
+  const { token } = useAuth();
   const [activeChart, setActiveChart] = useState('monthly');
-  const netProfit = dashboardData?.totalIncome - dashboardData?.totalExpenses || 0;
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  if (!dashboardData) {
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        // Fetch hustles data
+        const hustlesResponse = await fetch('http://127.0.0.1:5000/hustles', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        // Fetch transactions data
+        const transactionsResponse = await fetch('http://127.0.0.1:5000/transactions', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!hustlesResponse.ok || !transactionsResponse.ok) {
+          throw new Error('Failed to fetch data');
+        }
+
+        const hustlesData = await hustlesResponse.json();
+        const transactionsData = await transactionsResponse.json();
+
+        // Ensure we have arrays to work with
+        const safeHustles = Array.isArray(hustlesData) ? hustlesData : 
+                          (hustlesData.hustles || hustlesData.data || []);
+        
+        const safeTransactions = Array.isArray(transactionsData) ? transactionsData : 
+                              (transactionsData.transactions || transactionsData.data || []);
+
+        // Process the data to create dashboard metrics
+        const processedData = processDashboardData(safeHustles, safeTransactions);
+        setDashboardData(processedData);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        setDashboardData({
+          userName: 'User',
+          totalIncome: 0,
+          totalExpenses: 0,
+          incomeChange: 0,
+          expensesChange: 0,
+          totalHustles: 0,
+          monthlyData: [],
+          hustleComparison: [],
+          recentTransactions: [],
+          hustles: []
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (token) {
+      fetchDashboardData();
+    }
+  }, [token]);
+
+  const processDashboardData = (hustles = [], transactions = []) => {
+    // Ensure inputs are arrays
+    const safeHustles = Array.isArray(hustles) ? hustles : [];
+    const safeTransactions = Array.isArray(transactions) ? transactions : [];
+    
+    // Calculate total income and expenses with proper fallbacks
+    const totalIncome = safeTransactions
+      .filter(t => t && t.type === 'income')
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    
+    const totalExpenses = safeTransactions
+      .filter(t => t && t.type === 'expense')
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    // CHANGE: Count ALL hustles instead of just active ones
+    const totalHustles = safeHustles.length;
+
+    // Group transactions by month for the last 12 months
+    const monthlyData = [];
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthName = monthDate.toLocaleString('default', { month: 'short' });
+      const year = monthDate.getFullYear();
+      const month = monthDate.getMonth() + 1;
+      
+      const monthTransactions = safeTransactions.filter(t => {
+        if (!t || !t.created_at) return false;
+        try {
+          const tDate = new Date(t.created_at);
+          return tDate.getFullYear() === year && tDate.getMonth() + 1 === month;
+        } catch (e) {
+          return false;
+        }
+      });
+      
+      const monthIncome = monthTransactions
+        .filter(t => t && t.type === 'income')
+        .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+      
+      const monthExpenses = monthTransactions
+        .filter(t => t && t.type === 'expense')
+        .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+      
+      monthlyData.push({
+        month: monthName,
+        income: monthIncome,
+        expenses: monthExpenses,
+        profit: monthIncome - monthExpenses
+      });
+    }
+
+    // Create hustle comparison data (top 5 by income)
+    const hustleComparison = safeHustles.map(hustle => {
+      if (!hustle || !hustle.id) return null;
+      
+      const hustleTransactions = safeTransactions.filter(t => 
+        t && t.hustle_id === hustle.id
+      );
+      
+      const income = hustleTransactions
+        .filter(t => t && t.type === 'income')
+        .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+      
+      const expenses = hustleTransactions
+        .filter(t => t && t.type === 'expense')
+        .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+      
+      return {
+        name: hustle.title || 'Unnamed Hustle',
+        income,
+        expenses,
+        profit: income - expenses
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.income - a.income)
+    .slice(0, 5);
+
+    // Get recent transactions (last 5)
+    const recentTransactions = [...safeTransactions]
+      .filter(t => t && t.created_at)
+      .sort((a, b) => {
+        try {
+          return new Date(b.created_at) - new Date(a.created_at);
+        } catch (e) {
+          return 0;
+        }
+      })
+      .slice(0, 5)
+      .map(t => ({
+        id: t.id || Date.now().toString(),
+        type: t.type || 'unknown',
+        description: t.description || 'No description',
+        amount: Number(t.amount) || 0,
+        date: t.created_at ? new Date(t.created_at).toLocaleDateString() : 'Unknown date',
+        hustle: safeHustles.find(h => h && h.id === t.hustle_id)?.title || 'General'
+      }));
+
+    // Get top 3 hustles by profit
+    const topHustles = safeHustles
+      .map(hustle => {
+        if (!hustle || !hustle.id) return null;
+        
+        const hustleTransactions = safeTransactions.filter(t => 
+          t && t.hustle_id === hustle.id
+        );
+        
+        const income = hustleTransactions
+          .filter(t => t && t.type === 'income')
+          .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        
+        const expenses = hustleTransactions
+          .filter(t => t && t.type === 'expense')
+          .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+        
+        return {
+          id: hustle.id,
+          name: hustle.title || 'Unnamed Hustle',
+          status: income > 0 ? 'active' : 'needs_attention',
+          income,
+          expenses,
+          profit: income - expenses
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.profit - a.profit)
+      .slice(0, 3);
+
+    // Calculate percentage changes
+    const currentMonth = monthlyData[monthlyData.length - 1] || { income: 0, expenses: 0 };
+    const prevMonth = monthlyData[monthlyData.length - 2] || { income: 0, expenses: 0 };
+    
+    const incomeChange = prevMonth.income ? 
+      Math.round(((currentMonth.income - prevMonth.income) / prevMonth.income) * 100) : 0;
+    
+    const expensesChange = prevMonth.expenses ? 
+      Math.round(((currentMonth.expenses - prevMonth.expenses) / prevMonth.expenses) * 100) : 0;
+
+    return {
+      userName: 'User',
+      totalIncome,
+      totalExpenses,
+      incomeChange,
+      expensesChange,
+      totalHustles, // Now shows TOTAL hustles count
+      monthlyData,
+      hustleComparison,
+      recentTransactions,
+      hustles: topHustles
+    };
+  };
+
+  if (loading) {
     return (
       <div className="p-6">
         <div className="text-center py-10">
@@ -51,21 +265,23 @@ const DashboardOverview = ({ dashboardData }) => {
     );
   }
 
+  const netProfit = dashboardData?.totalIncome - dashboardData?.totalExpenses || 0;
+
+
   return (
     <div className="p-6 space-y-6">
       {/* Welcome Banner */}
-    
-<div className="bg-gradient-to-r from-teal-600 to-teal-700 text-white p-6 rounded-xl shadow-lg">
-  <h1 className="text-2xl font-bold mb-2">
-    {(() => {
-      const hour = new Date().getHours();
-      if (hour < 12) return `Good morning, ${dashboardData.userName || 'User'}!`;
-      if (hour < 18) return `Good afternoon, ${dashboardData.userName || 'User'}!`;
-      return `Good evening, ${dashboardData.userName || 'User'}!`;
-    })()}
-  </h1>
-  <p className="text-teal-100">Here's how your hustles are performing today</p>
-</div>
+      <div className="bg-gradient-to-r from-teal-600 to-teal-700 text-white p-6 rounded-xl shadow-lg">
+        <h1 className="text-2xl font-bold mb-2">
+          {(() => {
+            const hour = new Date().getHours();
+            if (hour < 12) return `Good morning, ${dashboardData.userName || 'User'}!`;
+            if (hour < 18) return `Good afternoon, ${dashboardData.userName || 'User'}!`;
+            return `Good evening, ${dashboardData.userName || 'User'}!`;
+          })()}
+        </h1>
+        <p className="text-teal-100">Here's how your hustles are performing today</p>
+      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -141,12 +357,14 @@ const DashboardOverview = ({ dashboardData }) => {
           </div>
         </div>
 
-        {/* Active Hustles Card */}
+        {/* Updated Hustles Card - Now shows TOTAL hustles */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Active Hustles</p>
-              <p className="text-2xl font-bold text-gray-900">{dashboardData.activeHustles || 0}</p>
+              <p className="text-sm font-medium text-gray-600">Total Hustles</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {dashboardData.totalHustles || 0}
+              </p>
             </div>
             <div className="p-3 bg-blue-100 rounded-full">
               <Users className="h-6 w-6 text-blue-600" />
