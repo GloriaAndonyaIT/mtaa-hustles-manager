@@ -80,6 +80,8 @@ class Hustle(db.Model):
     type = db.Column(db.String(50), nullable=False)  # e.g., 'side hustle', 'investment'
     description = db.Column(db.String(200), nullable=True)
     date = db.Column(db.Date, nullable=False)
+    location = db.Column(db.String(100), nullable=True)  # ✅ Add this
+    status = db.Column(db.String(20), default='active')  # ✅ Add this
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -93,13 +95,14 @@ class Hustle(db.Model):
         return f"<Hustle {self.id} - {self.title}>"
 
     def to_dict(self):
-        """Convert hustle to dictionary"""
         return {
             'id': self.id,
             'title': self.title,
             'type': self.type,
             'description': self.description,
             'date': self.date.isoformat() if self.date else None,
+            'location': self.location,  # ✅ Include this
+            'status': self.status,      # ✅ Include this
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'user_id': self.user_id,
@@ -107,7 +110,7 @@ class Hustle(db.Model):
         }
 
 
-# models.py
+
 
 class Transaction(db.Model):
     __tablename__ = 'transactions'
