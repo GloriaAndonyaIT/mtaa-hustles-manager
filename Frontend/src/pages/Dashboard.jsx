@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// Dashboard.jsx
+import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -7,6 +8,13 @@ import DashboardOverview from '../components/dashboard/DashboardOverview';
 const Dashboard = () => {
 
   const { token } = useAuth();
+
+  const navigate = useNavigate();
+
+  if (!token) {
+    navigate('/auth/login');
+    return null;
+
 
   const { token, logout } = useAuth();
 
@@ -165,11 +173,12 @@ const Dashboard = () => {
   if (loading || !dashboardData) {
 
     return <LoadingSpinner />;
+
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <DashboardOverview dashboardData={dashboardData} />
+      <DashboardOverview />
     </div>
   );
 };

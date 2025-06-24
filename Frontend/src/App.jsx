@@ -7,8 +7,12 @@ import AuthPage from "./pages/AuthPage";
 import LoadingSpinner from "./components/common/LoadingSpinner";
 import Navigation from "./components/common/Navigation";
 import Dashboard from "./pages/Dashboard";
-import MyHustlesPage from './components/hustles/MyHustlesPage';
+import HustlePage from './pages/HustlesPage';
+import HustleDetailPage from './pages/HustleDetailPage';
+import TransactionForm from './components/hustles/TransactionForm';
+import HustleForm from './components/hustles/HustleForm';
 
+// 🔐 Protect routes based on authentication
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuth();
   return user ? children : <Navigate to="/" replace />;
@@ -19,6 +23,7 @@ const PublicRoute = ({ children }) => {
   return user ? <Navigate to="/dashboard" replace /> : children;
 };
 
+// 🧱 Shared layout for all protected pages
 const AppLayout = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -56,42 +61,46 @@ const AppLayout = ({ children }) => {
   );
 };
 
+// 🔄 Main routing logic
 function AppContent() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setLoading(false);
-    }, 2000);
+    }, 1000);
 
     return () => clearTimeout(timer);
   }, []);
 
   if (loading) {
-    return <LoadingSpinner />;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
   }
 
   return (
     <Routes>
-      {/* Public Routes */}
+      {/* 🌐 Public Routes */}
       <Route path="/" element={
         <PublicRoute>
           <LandingPage />
         </PublicRoute>
       } />
-      
-      {/* Authentication Routes */}
+
       <Route path="/auth/:mode" element={
         <PublicRoute>
           <AuthPage />
         </PublicRoute>
       } />
-      
-      {/* Legacy route redirects */}
+
+      {/* 🔁 Redirects for old login/signup paths */}
       <Route path="/login" element={<Navigate to="/auth/login" replace />} />
       <Route path="/signup" element={<Navigate to="/auth/signup" replace />} />
-      
-      {/* Protected Routes */}
+
+      {/* 🔒 Protected Routes */}
       <Route path="/dashboard" element={
         <ProtectedRoute>
           <AppLayout>
@@ -99,27 +108,53 @@ function AppContent() {
           </AppLayout>
         </ProtectedRoute>
       } />
-      <Route path="/hustles/*" element={
+
+      <Route path="/hustles" element={
         <ProtectedRoute>
           <AppLayout>
-            <MyHustlesPage />
+            <HustlePage />
           </AppLayout>
         </ProtectedRoute>
       } />
-      
-      {/* Catch all route */}
+
+      <Route path="/hustles/new" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <HustleForm />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/hustles/:id/*" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <HustleDetailPage />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/hustles/:id/transactions/new" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <TransactionForm />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+
+      {/* 🧹 Catch-All Route */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
 
+// 🧠 Final export with proper context and router setup
 function App() {
   return (
-    <AuthProvider>
-      <Router>
+    <Router>
+      <AuthProvider>
         <AppContent />
-      </Router>
-    </AuthProvider>
+      </AuthProvider>
+    </Router>
   );
 }
 
