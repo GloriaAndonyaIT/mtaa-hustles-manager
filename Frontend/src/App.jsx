@@ -11,6 +11,7 @@ import HustlePage from './pages/HustlesPage';
 import HustleDetailPage from './pages/HustleDetailPage';
 import TransactionForm from './components/hustles/TransactionForm';
 import HustleForm from './components/hustles/HustleForm';
+import Debt from './pages/Debt';
 
 // 🔐 Protect routes based on authentication
 const ProtectedRoute = ({ children }) => {
@@ -137,6 +138,15 @@ function AppContent() {
         <ProtectedRoute>
           <AppLayout>
             <TransactionForm />
+          </AppLayout>
+        </ProtectedRoute>
+      } />
+      
+
+      <Route path="/debts" element={
+        <ProtectedRoute>
+          <AppLayout>
+            <Debt />
           </AppLayout>
         </ProtectedRoute>
       } />
