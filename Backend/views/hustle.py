@@ -24,19 +24,45 @@ def get_current_user():
 @hustle_bp.route("/hustles", methods=["POST"])
 @jwt_required()
 def create_hustle():
-    data = request.get_json()
-    current_user = get_current_user()
-
-    if not current_user:
-        return jsonify({"error": "User not found"}), 404
-
-    title = data.get("title")
-    hustle_type = data.get("type")
-    description = data.get("description")
-    date_str = data.get("date")
-
-    if not title or not hustle_type or not description or not date_str:
-        return jsonify({"error": "Title, type, description, and date are required"}), 400
+    try:
+        current_user_id = get_jwt_identity()
+        if not current_user_id:
+            return jsonify({"error": "Invalid token"}), 401
+            
+        data = request.get_json()
+        
+        # Validate required fields
+        required = ["title", "type", "description", "date"]
+        if not all(field in data for field in required):
+            return jsonify({"error": f"Missing fields: {required}"}), 400
+        
+        # Create hustle
+        new_hustle = Hustle(
+            title=data["title"],
+            type=data["type"],
+            description=data["description"],
+            date=datetime.strptime(data["date"], "%Y-%m-%d").date(),
+            user_id=current_user_id
+        )
+        db.session.add(new_hustle)
+        db.session.commit()
+        
+        return jsonify({
+        "success": True,
+        "hustle": {  # Wrap in "hustle" key
+            "id": new_hustle.id,
+            "title": new_hustle.title,
+            "type": new_hustle.type,
+            "description": new_hustle.description,
+            "date": new_hustle.date.isoformat(),
+            "user_id": new_hustle.user_id,
+            "status": "active"  # Add default status
+        }
+    }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
     # For admins, allow specifying user_id
     if current_user.is_admin:
@@ -68,10 +94,12 @@ def create_hustle():
 
 
 
+
 # GET HUSTLE BY ID
 @hustle_bp.route("/hustles/<int:hustle_id>", methods=["GET"])
 @jwt_required()
 def get_hustle(hustle_id):
+    print("Received token:", request.headers.get('Authorization'))
     current_user = get_current_user()
     
     if not current_user:
@@ -87,14 +115,16 @@ def get_hustle(hustle_id):
         return jsonify({"error": "Access denied"}), 403
 
     return jsonify({
-        "id": hustle.id,
-        "title": hustle.title,
-        "type": hustle.type,
-        "description": hustle.description,
-        "date": hustle.date.isoformat(),
-        "user_id": hustle.user_id,
-        "username": hustle.user.username,
-        "created_at": hustle.created_at.isoformat() if hustle.created_at else None
+        "hustle": {
+            "id": hustle.id,
+            "title": hustle.title,
+            "type": hustle.type,
+            "description": hustle.description,
+            "date": hustle.date.isoformat(),
+            "status": "active",  # Make sure this exists
+            "user_id": hustle.user_id,
+            "created_at": hustle.created_at.isoformat() if hustle.created_at else None
+        }
     }), 200
 
 
