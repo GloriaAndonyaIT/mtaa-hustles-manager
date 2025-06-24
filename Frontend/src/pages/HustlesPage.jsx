@@ -20,11 +20,27 @@ const HustlesPage = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      setHustles(response.data || []);
+      // Add debugging and better validation
+      console.log('API response:', response.data);
+      
+      // Ensure we always set an array
+      const hustlesData = response.data;
+      if (Array.isArray(hustlesData)) {
+        setHustles(hustlesData);
+      } else if (hustlesData && Array.isArray(hustlesData.hustles)) {
+        // In case the API returns { hustles: [...] }
+        setHustles(hustlesData.hustles);
+      } else if (hustlesData && Array.isArray(hustlesData.data)) {
+        // In case the API returns { data: [...] }
+        setHustles(hustlesData.data);
+      } else {
+        console.warn('API response is not an array:', hustlesData);
+        setHustles([]);
+      }
     } catch (err) {
       console.error('Fetch hustles error:', err);
       toast.error(err.response?.data?.error || 'Failed to fetch hustles');
-      setHustles([]);
+      setHustles([]); // Ensure it's always an array
     } finally {
       setLoading(false);
     }
@@ -47,6 +63,9 @@ const HustlesPage = () => {
     if (token) fetchHustles();
   }, [token]);
 
+  // Add a safety check before rendering
+  const hustlesList = Array.isArray(hustles) ? hustles : [];
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
@@ -62,7 +81,7 @@ const HustlesPage = () => {
 
       {loading ? (
         <LoadingSpinner />
-      ) : hustles.length === 0 ? (
+      ) : hustlesList.length === 0 ? (
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 text-center">
           <Briefcase className="mx-auto h-12 w-12 text-gray-400 mb-4" />
           <p className="text-gray-600 mb-4">You don't have any hustles yet.</p>
@@ -75,7 +94,7 @@ const HustlesPage = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {hustles.map(hustle => (
+          {hustlesList.map(hustle => (
             <div 
               key={hustle.id} 
               className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
