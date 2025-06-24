@@ -107,31 +107,40 @@ class Hustle(db.Model):
         }
 
 
+# models.py
+
 class Transaction(db.Model):
     __tablename__ = 'transactions'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    description = db.Column(db.String(200), nullable=False)
     amount = db.Column(db.Float, nullable=False)
-    type = db.Column(db.String(50), nullable=False)  # e.g., 'income', 'expense'
+    type = db.Column(db.String(20), nullable=False)
+    description = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     hustle_id = db.Column(db.Integer, db.ForeignKey('hustles.id'), nullable=True)
-    
-    # Add to_dict method
+
+    # ✅ Add these if you use them
+    category = db.Column(db.String(100))
+    notes = db.Column(db.Text)
+    tags = db.Column(db.String(255))  # You’re storing tags as comma-separated string
+
     def to_dict(self):
         return {
-            'id': self.id,
-            'description': self.description,
-            'amount': self.amount,
-            'type': self.type,
-            'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'user_id': self.user_id,
-            'hustle_id': self.hustle_id,
-            'hustle_title': self.hustle.title if self.hustle else None
+            "id": self.id,
+            "amount": self.amount,
+            "type": self.type,
+            "description": self.description,
+            "created_at": self.created_at.strftime('%Y-%m-%d'),
+            "updated_at": self.updated_at.strftime('%Y-%m-%d') if self.updated_at else None,
+            "user_id": self.user_id,
+            "hustle_id": self.hustle_id,
+            "category": self.category,
+            "notes": self.notes,
+            "tags": self.tags.split(',') if self.tags else []
         }
+
 
 
 class Debt(db.Model):
