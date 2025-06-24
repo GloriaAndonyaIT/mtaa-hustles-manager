@@ -271,6 +271,7 @@ const DashboardOverview = () => {
   return (
     <div className="p-6 space-y-6">
       {/* Welcome Banner */}
+
       <div className="bg-gradient-to-r from-teal-600 to-teal-700 text-white p-6 rounded-xl shadow-lg">
         <h1 className="text-2xl font-bold mb-2">
           {(() => {
@@ -282,6 +283,11 @@ const DashboardOverview = () => {
         </h1>
         <p className="text-teal-100">Here's how your hustles are performing today</p>
       </div>
+
+
+    
+
+
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -383,7 +389,11 @@ const DashboardOverview = () => {
       </div>
 
       {/* Analytics Section */}
+
       {dashboardData.monthlyData?.length > 0 && (
+
+      {dashboardData.monthlyData.length > 0 && (
+
         <div className="bg-white rounded-3xl shadow-lg border-0">
           <div className="p-8">
             <div className="flex items-center justify-between mb-8">
@@ -449,7 +459,11 @@ const DashboardOverview = () => {
                       axisLine={true}
                       tickLine={true}
                       tick={{ dx: 5, fill: '#6b7280' }}
+
                       tickFormatter={(value) => `${((value / (dashboardData.totalIncome || 1)) * 100).toFixed(0)}%`}
+
+                      tickFormatter={(value) => `${((value / dashboardData.totalIncome) * 100).toFixed(0)}%`}
+
                     />
                     <Tooltip content={<MPesaTooltip />} />
                     <Line
@@ -527,7 +541,11 @@ const DashboardOverview = () => {
       </div>
 
       {/* Hustles Performance */}
+
       {dashboardData.hustles?.length > 0 && (
+
+      {dashboardData.hustles.length > 0 && (
+
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-900">Your Hustles Performance</h2>
@@ -575,7 +593,11 @@ const DashboardOverview = () => {
       )}
 
       {/* Recent Activity */}
+
       {dashboardData.recentTransactions?.length > 0 && (
+
+      {dashboardData.recentTransactions.length > 0 && (
+
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
